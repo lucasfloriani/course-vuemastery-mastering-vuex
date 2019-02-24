@@ -366,3 +366,11 @@ methods: {
   }
 }
 ```
+
+## Paginação
+
+Para realizar paginação através de parametros get, precisamos adicionar um atributo a tag **router-view** para que ela reconheça que os parametros da url foram trocados e faça o reload da listagem.
+
+```html
+<router-view :key="$route.fullPath" />
+```
