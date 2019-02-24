@@ -252,3 +252,117 @@ export default {
   }
 };
 ```
+
+## Mutations and Actions
+
+Mutations podem atualizar/mudar o estado da Vuex
+**Mutations são sincronas**
+
+```js
+state: {
+  count: 0
+},
+mutations: {
+  INCREMENT_COUNT(state) {
+    state.count += 1
+  }
+}
+```
+
+```html
+<template>
+  <button @click="incrementCount">
+    Increment
+  </button>
+</template>
+
+<script>
+  export default {
+    methods: {
+      incrementCount() {
+        this.$store.commit("INCREMENT_COUNT");
+      }
+    }
+  };
+</script>
+```
+
+OBS: **this.\$store.commit** chama a mutation pelo nome
+
+As mutations são escritas todas em maiusculo pois é comum no padrão Flux no qual o Vuex é baseado, porem não é obrigatório, porem ao utilizar este modo, podemos identificar de cara quando são utilizados mutations e as actions em nossos arquivos.
+
+### Dynamic Mutations
+
+Podemos passar parâmetros para nossas mutations com a seguinte sintaxe:
+
+```js
+state: {
+  count: 0
+},
+mutations: {
+  INCREMENT_COUNT(state, value) {
+    state.count += value
+  }
+}
+```
+
+```html
+<template>
+  <input type="number" v-model.number="incrementBy" />
+  <button @click="incrementCount">
+    Increment
+  </button>
+</template>
+
+<script>
+  export default {
+    data() {
+      return {
+        incrementBy: 1
+      };
+    },
+    methods: {
+      incrementCount() {
+        this.$store.commit("INCREMENT_COUNT", this.incrementBy);
+      }
+    }
+  };
+</script>
+```
+
+### Actions
+
+- **Actions são assincronas**, ou seja, sua ordem é randomica.
+- Actions podem embrulhar a lógica de negócio envolta das mutations.
+- Actions podem não usar o commit para Mutations em certos casos, pois podem ocorrer certas verificações antes de realizar alguma ação que precise comitar para as Mutations.
+- **De acordo com o time core do Vue, sempre deve-se colocar mutations dentro de actions, mesmo que você tenha uma action que é dedicada a uma só mutation, pois assim quando for preciso adicionar código nesta mutation, sua estrutura já estará codificada corretamente (Maior escalabilidade)**
+
+```js
+state: {
+  user: null,
+  count: 0
+},
+mutations: {
+  INCREMENT_COUNT(state, value) {
+    state.count += value
+  }
+},
+actions: {
+  updateCount({state, commit}, value) {
+    if (state.user) {
+      commit('INCREMENT_COUNT', value)
+    }
+  }
+}
+```
+
+```js
+methods: {
+  incrementCount() {
+    // Chama Action Direto (dispath)
+    this.$store.dispatch('updateCount', this.inscrementBy)
+    // Chama Mutation Direto (commit)
+    // this.$store.commit('INCREMENT_COUNT', this.inscrementBy)
+  }
+}
+```
