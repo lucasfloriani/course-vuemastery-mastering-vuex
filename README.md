@@ -374,3 +374,184 @@ Para realizar paginação através de parametros get, precisamos adicionar um at
 ```html
 <router-view :key="$route.fullPath" />
 ```
+
+## Vuex Modules
+
+Ao utilizar todos os states, mutations, actions e getters em um arquivo (**store.js**), pode ser complicado manter caso a aplicação cresça.
+
+Utilizando o conceito de **Vuex Modules**, nós podemos separar nossos códigos da store em módulos separados por model (objeto), onde o arquivo principai (store.js) importará o conteudo destes arquivos.
+
+Modules são geralmente criados para:
+
+- **Data models**
+- **Features**: funcionalidades que usam state compartilhado, como por exemplo um módulo para autenticação de usuario
+
+Podemos separar a estrutura de pastas como a seguinte:
+
+```text
+/store
+  /modules
+    event.js
+    user.js
+  store.js
+```
+
+Dentro do arquivo do store ao invez de termos as actions, mutations, store e getters, somente teremos a propriedade **modules**:
+
+```js
+import * as event from "@/store/modules/event.js";
+import * as user from "@/store/modules/user.js";
+
+export default new Vuex.Store({
+  modules: {
+    event,
+    user
+  }
+});
+```
+
+Dentro dos arquivos de modules podemos serguir a sintaxe de constantes, sendo seus beneficios a criação de variaveis e metodos privados:
+
+```js
+export const state = {};
+export const mutations = {};
+export const actions = {};
+export const getters = {};
+// Para importar usasse
+import * as name from "@/store/modules/name.js";
+```
+
+Ou tambem podemos utilizar a sintaxe para exportar um objeto:
+
+```js
+export default {
+  state: {},
+  mutations: {},
+  actions: {},
+  getters: {}
+};
+// Para importar usasse
+import name from "@/store/modules/name.js";
+```
+
+OBS: Ambas as sintaxes podem ser utilizadas tranquilamente, somente uma questão de preferencia
+
+É comum acessarmos estados de um module dentro de outro em aplicações.
+
+```js
+// event.js
+export const actions = {
+  createEvent({ commit, rootState }, event) {
+    console.log("User creating Event is", rootState.user.user.name);
+    return EventService.postEvent(event).then(() => {
+      commit("ADD_EVENT", event);
+    });
+  }
+};
+```
+
+O parâmetro rootState fornece acesso ao store do arquivo principal do Vuex (store.js)
+
+Para chamarmos actions de um outro modulo executamos da seguinte forma:
+
+```js
+// event.js
+export const actions = {
+  createEvent({ commit, dispatch, rootState }, event) {
+    console.log("User creating Event is", rootState.user.user.name);
+    dispatch("actionToCall");
+    return EventService.postEvent(event).then(() => {
+      commit("ADD_EVENT", event);
+    });
+  }
+};
+```
+
+Para chamar uma action usamos do mesmo modo que a utilização do arquivo store.js, pois as actions acabam ficando no global namespace.
+
+### Global namespace
+
+**Actions, Mutations and Getters** são sempre registrados dentro do namespace global (Basicamente no root onde o \$store está) mesmo quando usado Modules.
+
+Não importa onde nós os declaramos, eles serão chamados sem o nome do seu módulo.
+
+Vuex foi implementado assim pois nós podemos ter várias actions/mutations usando o mesmo nome, porem com isto pode-se ter problemas com colisão de nomes, algo que o **Vuex Module NameSpacing** resolve
+
+### Vuex Module NameSpacing
+
+```js
+// event.js
+export const namespaced = true;
+```
+
+Garante que todas as mutations, actions e getters estarão dentro do namespace event.
+Com isto, precisamos adicionar o prefixo **'nomeDoArquivoModule/NomeDa(Action/Mutation/Getter)**
+
+```js
+this.$store.dispatch("event/fetchEvent");
+```
+
+Podemos facilitar a utilização de actions em nossos componentes com a **mapActions** do Vuex
+
+```js
+export default {
+  props: ["id"],
+  created() {
+    // Pega dispatcher da store que foi adicionada
+    // ao methods pela função mapActions
+    this.fetchEvent(this.id);
+  },
+  computed: mapState({
+    event: state => state.event.event
+  }),
+  // methods: mapActions(['event/fetchEvent'])
+  //
+  // É possível adicionar deste modo,
+  // assim todos os itens no array vão ter o prefixo
+  // do namespace 'event'
+  // Onde (namespace, ActionToMap)
+  methods: mapActions("event", ["fetchEvent"])
+};
+```
+
+Para pegar Getters quando se utiliza namespaces utilizamos da seguinte forma:
+
+```js
+// Sem namespacing
+computed: {
+  getEventById() {
+    return this.$store.getters.getEventById
+  }
+}
+
+// Sem namespacing e com mapGetters
+computed: mapGetters(['getEventById'])
+
+// Com namespacing
+computed: {
+  getEventById() {
+    return this.$store.getters['event/getEventById']
+  }
+}
+
+// Com namespacing e com mapGetters
+computed: mapGetters('event', ['getEventById'])
+```
+
+Mutations não devem ser chamadas por outros Vuex Modules, onde devem ser somente chamadas pela action dentro do modulo atual, sendo estas boas práticas.
+
+Porem podemos chamar uma action de um outro modulo da seguinte maneira quando utilzado namespace:
+
+```js
+// event.js
+export const actions = {
+  createEvent({ commit, dispatch, rootState }, event) {
+    console.log("User creating Event is", rootState.user.user.name);
+    // ('nome da action', 'parametros', options)
+    dispatch("moduleName/actionToCall", null, { root: true });
+    return EventService.postEvent(event).then(() => {
+      commit("ADD_EVENT", event);
+    });
+  }
+};
+```
